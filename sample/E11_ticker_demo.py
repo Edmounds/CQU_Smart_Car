@@ -16,14 +16,9 @@ from smartcar import ticker
 import gc
 
 # 核心板上 C4 是 LED
-# 学习板上 D9  对应二号拨码开关
-
-# 调用 machine 库的 Pin 类实例化一个引脚对象
-# 配置参数为 引脚名称 引脚方向 模式配置 默认电平
-# 详细内容参考 固件接口说明
-led     = Pin('C4' , Pin.OUT, pull = Pin.PULL_UP_47K, value = True)
-switch2 = Pin('D9' , Pin.IN , pull = Pin.PULL_UP_47K, value = True)
-
+# 学习板上 D9 对应二号拨码开关
+led     = Pin('C4' , Pin.OUT, value = True)
+switch2 = Pin('D9' , Pin.IN , pull = Pin.PULL_UP_47K)
 state2  = switch2.value()
 
 ticker_flag = False

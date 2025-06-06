@@ -17,14 +17,9 @@ import time
 # 核心板上 C4 是 LED
 # 学习板上 D19 对应霍尔停车检测接口
 # 学习板上 D9  对应二号拨码开关
-
-# 调用 machine 库的 Pin 类实例化一个引脚对象
-# 配置参数为 引脚名称 引脚方向 模式配置 默认电平
-# 详细内容参考 固件接口说明
-led     = Pin('C4' , Pin.OUT, pull = Pin.PULL_UP_47K, value = True)
-hall    = Pin('D19', Pin.IN , pull = Pin.PULL_UP_47K, value = True)
-switch2 = Pin('D9' , Pin.IN , pull = Pin.PULL_UP_47K, value = True)
-
+led     = Pin('C4' , Pin.OUT, value = True)
+hall    = Pin('D19', Pin.IN , pull = Pin.PULL_UP_47K)
+switch2 = Pin('D9' , Pin.IN , pull = Pin.PULL_UP_47K)
 state2  = switch2.value()
 
 # 新建一个变量用于计数
@@ -41,8 +36,11 @@ def hall_handler(x):
     print("hall_count ={:>6d}, hall_state ={:>6d}".format(hall_count, x.value()))
 
 # 配置 Pin 的中断 也就是外部中断 EXTI
-# 由于选择的是下降沿触发 因此回调函数中的状态一般是 0 如果改成上升沿则是 1
-hall.irq(hall_handler, Pin.IRQ_FALLING, False) # IRQ_RISING IRQ_FALLING
+#   Pin.irq(handler, trigger, hard)
+#   handler 回调函数    | 必要参数 触发后对应的回调函数 python 函数
+#   trigger 触发模式    | 必要参数 可用值为 Pin.x, x = {IRQ_RISING, IRQ_FALLING}
+#   hard    应用模式    | 可选参数 可用值为 False True
+hall.irq(hall_handler, Pin.IRQ_FALLING, False)
 
 while True:
     time.sleep_ms(1000)

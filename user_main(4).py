@@ -35,30 +35,31 @@ end_switch = Pin('D9', Pin.IN, pull=Pin.PULL_UP_47K, value=True)
 end_state = end_switch.value()
 
 # 定义片选引脚
-fenmingqi = Pin('C9', Pin.OUT, pull=Pin.PULL_UP_47K, value=0)
+fenmingqi = Pin('D24', Pin.OUT, pull=Pin.PULL_UP_47K, value=0)
 
-cs = Pin('C5', Pin.OUT, pull=Pin.PULL_UP_47K, value=1)
+cs = Pin('B29', Pin.OUT, pull=Pin.PULL_UP_47K, value=1)
 # 拉高拉低一次 CS 片选确保屏幕通信时序正常
 cs.high()
 cs.low()
 key = KEY_HANDLER(10)
 # 定义控制引脚
-rst = Pin('B9', Pin.OUT, pull=Pin.PULL_UP_47K, value=1)
-dc = Pin('B8', Pin.OUT, pull=Pin.PULL_UP_47K, value=1)
-blk = Pin('C4', Pin.OUT, pull=Pin.PULL_UP_47K, value=1)
-# 新建 LCD 驱动实例 这里的索引范围与 SPI 示例一致 当前仅支持 IPS200
+rst = Pin('B31', Pin.OUT, pull=Pin.PULL_UP_47K, value=1)
+dc = Pin('B5', Pin.OUT, pull=Pin.PULL_UP_47K, value=1)
+blk = Pin('C21', Pin.OUT, pull=Pin.PULL_UP_47K, value=1)
+
+# 新建 LCD 驱动实例
 drv = LCD_Drv(SPI_INDEX=1, BAUDRATE=60000000, DC_PIN=dc, RST_PIN=rst, LCD_TYPE=LCD_Drv.LCD200_TYPE)
 # 新建 LCD 实例
 lcd = LCD(drv)
 # color 接口设置屏幕显示颜色 [前景色,背景色]
 lcd.color(0x0000, 0xFFFF)
 # mode 接口设置屏幕显示模式 [0:竖屏,1:横屏,2:竖屏180旋转,3:横屏180旋转]
-lcd.mode(2)
+lcd.mode(0)
 # 清屏
 lcd.clear(0xFFFF)
 # 电机初始化
-motor_l = MOTOR_CONTROLLER(MOTOR_CONTROLLER.PWM_C24_DIR_C26, 13000, duty=0, invert=True)
-motor_r = MOTOR_CONTROLLER(MOTOR_CONTROLLER.PWM_C25_DIR_C27, 13000, duty=0, invert=True)
+motor_l = MOTOR_CONTROLLER(MOTOR_CONTROLLER.PWM_C28_PWM_C29, 13000, duty=0, invert=True)
+motor_r = MOTOR_CONTROLLER(MOTOR_CONTROLLER.PWM_D6_DIR_D7, 13000, duty=0, invert=True)
 motor_dir = 1
 motor_duty = 0
 motor_duty_max = 1000
@@ -76,7 +77,7 @@ encoder_r = encoder("D2", "D3")
 # 默认参数为 1 调整这个参数相当于调整曝光时间倍数
 ccd = TSL1401(10)
 # 陀螺仪初始化
-imu = IMU660RX()
+imu = IMU963RA()
 imu_data = imu.get()
 
 ticker_flag = False
@@ -278,7 +279,7 @@ def Limit(value):
     return value
 
 # 姿态解算函数
-def Imu660():
+def Imu963():
     alpha = 0.3
     global imu_data, max_gyro_x
     if abs(imu_data[3]) < 30 or abs(imu_data[3]) > 30000:
@@ -486,7 +487,7 @@ def time_pit_handler(time):
     ticker_count = (ticker_count + 1) if (ticker_count < 10) else (1)  # 计数标注
 
     if ticker_count % 1 == 0:  # 角速度 1ms 执行一次
-        Imu660()  # 陀螺仪解算
+        Imu963()  # 陀螺仪解算
         #print("{:>6f}, {:>6f}, {:>6f}\n".format(Imu.Pitch, Imu.Roll, Imu.Yaw))  # 测试用，配置参数后通过vofa 串口打印
         # print("{:>6f}, {:>6f}, {:>6f}\n".format(Imu.gyro_x, Imu.gyro_y, Imu.gyro_z))  # 测试用，配置参数后通过vofa 串口打印
         motor1 = angle_speed1(angle_1, Imu.gyro_x)

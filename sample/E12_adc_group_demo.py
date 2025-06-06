@@ -22,26 +22,29 @@ from smartcar import ADC_Group
 import gc
 
 # 核心板上 C4 是 LED
-# 学习板上 D9  对应二号拨码开关
-
-# 调用 machine 库的 Pin 类实例化一个引脚对象
-# 配置参数为 引脚名称 引脚方向 模式配置 默认电平
-# 详细内容参考 固件接口说明
-led     = Pin('C4' , Pin.OUT, pull = Pin.PULL_UP_47K, value = True)
-switch2 = Pin('D9' , Pin.IN , pull = Pin.PULL_UP_47K, value = True)
-
+# 学习板上 D9 对应二号拨码开关
+led     = Pin('C4' , Pin.OUT, value = True)
+switch2 = Pin('D9' , Pin.IN , pull = Pin.PULL_UP_47K)
 state2  = switch2.value()
 
-# 实例化一个 ADC_Group 模块
-# 参数代表它对应 MCU 的哪个 ADC 模块
-# 学习板上 运放模块使用的引脚推荐绑定 ADC1
-# 详细内容参考 固件接口说明
+# 构造接口 用于构建一个 ADC_Group 对象
+#   ADC_Group(id)
+#   id      模块索引    |   必要参数 RT1021 对应有 [1,2] 总共两个模块可选
 adc_group = ADC_Group(1)
 # 将四个通道添加进来
 adc_group.addch('B12')
 adc_group.addch('B14')
 adc_group.addch('B15')
 adc_group.addch('B17')
+
+# 其余接口：
+# ADC_Group.init(id, period = ADC_Group.PMODE3, average = ADC_Group.AVG16)
+#   id      模块索引    |   必要参数 RT1021 对应有 [1,2] 总共两个模块可选
+#   period  采样周期    |   可选参数 关键字输入 默认 ADC_Group.x, x = {PMODE0, PMODE1, PMODE2, PMODE3}
+#   average 均值选项    |   可选参数 关键字输入 默认 ADC_Group.x, x = {AVG1, AVG4, AVG8, AVG16, AVG32}
+# ADC_Group.capture()       # 触发一次 ADC_Group 的转换
+# ADC_Group.get()           # 将 ADC_Group 转换结果更新到数据缓冲区 并返回为一个列表
+# ADC_Group.read()          # 触发一次转换 并将转换结果更新到数据缓冲区 返回为一个列表
 
 ticker_flag = False
 ticker_count = 0
@@ -56,11 +59,11 @@ def time_pit_handler(time):
 # 实例化 PIT ticker 模块 参数为编号 [0-3] 最多四个
 pit1 = ticker(1)
 
-# 通过 capture 接口更新数据 但在这个例程中被 ticker 模块接管了
+# 通过 capture 接口更新数据 但在这个例程中被 ticker.capture_list 模块接管了
 # adc_group.capture()
 # 关联采集接口 最少一个 最多八个 (imu, ccd, key...)
 # 可关联 smartcar 的 ADC_Group_x 与 encoder_x
-# 可关联 seekfree 的  IMU660RA, IMU963RA, KEY_HANDLER 和 TSL1401
+# 可关联 seekfree 的  KEY_HANDLER, IMU660RX, IMU963RX, DL1X 和 TSL1401
 pit1.capture_list(adc_group)
 
 # 关联 Python 回调函数

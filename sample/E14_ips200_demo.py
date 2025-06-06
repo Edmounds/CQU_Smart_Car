@@ -7,6 +7,7 @@
 
 # 从 machine 库包含所有内容
 from machine import *
+from array import *
 
 # 包含 display 库
 from display import *
@@ -15,35 +16,54 @@ from display import *
 import gc
 import time
 
-# 核心板上 C4 是 LED
-
-# 调用 machine 库的 Pin 类实例化一个引脚对象
-# 配置参数为 引脚名称 引脚方向 模式配置 默认电平
-# 详细内容参考 固件接口说明
-switch2 = Pin('D9' , Pin.IN , pull = Pin.PULL_UP_47K, value = True)
-
+# 学习板上 D9 对应二号拨码开关
+switch2 = Pin('D9' , Pin.IN , pull = Pin.PULL_UP_47K)
 state2  = switch2.value()
 
-# 定义片选引脚
-cs = Pin('B29' , Pin.OUT, pull=Pin.PULL_UP_47K, value=1)
-# 拉高拉低一次 CS 片选确保屏幕通信时序正常
+# 定义片选引脚 拉高拉低一次 CS 片选确保屏幕通信时序正常
+cs = Pin('B29' , Pin.OUT, value=True)
 cs.high()
 cs.low()
+
 # 定义控制引脚
-rst = Pin('B31', Pin.OUT, pull=Pin.PULL_UP_47K, value=1)
-dc  = Pin('B5' , Pin.OUT, pull=Pin.PULL_UP_47K, value=1)
-blk = Pin('C21', Pin.OUT, pull=Pin.PULL_UP_47K, value=1)
-# 新建 LCD 驱动实例 这里的索引范围与 SPI 示例一致 当前仅支持 IPS200
+rst = Pin('B31', Pin.OUT, value=True)
+dc  = Pin('B5' , Pin.OUT, value=True)
+blk = Pin('C21', Pin.OUT, value=True)
+
+# 构造接口 用于构建一个 LCD_Drv 对象
+#   LCD_Drv(SPI_INDEX, BAUDRATE, DC_PIN, RST_PIN, LCD_TYPE)
+#   SPI_INDEX   接口索引    |   必要参数 关键字输入 选择屏幕所用的 SPI 接口索引
+#   BAUDRATE    通信速率    |   必要参数 关键字输入 SPI 的通信速率 最高 60MHz
+#   DC_PIN      命令引脚    |   必要参数 关键字输入 一个 Pin 实例
+#   RST_PIN     复位引脚    |   必要参数 关键字输入 一个 Pin 实例
+#   LCD_TYPE    屏幕类型    |   必要参数 关键字输入 目前仅支持 LCD_Drv.LCD200_TYPE
 drv = LCD_Drv(SPI_INDEX=2, BAUDRATE=60000000, DC_PIN=dc, RST_PIN=rst, LCD_TYPE=LCD_Drv.LCD200_TYPE)
-# 新建 LCD 实例
+
+# 构造接口 用于构建一个 LCD 对象
+#   LCD(LCD_Drv)
+#   LCD_Drv     接口对象    |   必要参数 LCD_Drv 对象
 lcd = LCD(drv)
-# color 接口设置屏幕显示颜色 [前景色,背景色]
+
+# 修改 LCD 的前景色与背景色
+#   LCD.color(pcolor, bgcolor)
+#   pcolor      前景色     |   必要参数 RGB565 格式
+#   bgcolor     背景色     |   必要参数 RGB565 格式
 lcd.color(0xFFFF, 0x0000)
-# mode 接口设置屏幕显示模式 [0:竖屏,1:横屏,2:竖屏180旋转,3:横屏180旋转]
+
+# 修改 LCD 的显示方向
+#   LCD.mode(dir)
+#   dir         显示方向    |   必要参数 [0:竖屏,1:横屏,2:竖屏180旋转,3:横屏180旋转]
 lcd.mode(2)
+
 # 清屏 不传入参数就使用当前的 背景色 清屏
-# 传入 RGB565 格式参数会直接把传入的颜色设置为背景色 然后清屏
+#   LCD.clear([color])
+#   color       颜色数值    |   非必要参数 RGB565 格式 输入参数则更新背景色并清屏
 lcd.clear(0x0000)
+
+arr = array('h', [0] * 128)
+for i in range(0, 64):
+    arr[i] = i * 64
+    arr[127 - i] = i * 64
 
 while True:
     time.sleep_ms(500)
@@ -82,6 +102,17 @@ while True:
     # thick - 线的宽度 可以不填 默认 1
     lcd.line(  0, 84, 200, 16 + 84, color = 0xFFFF, thick = 1)
     lcd.line(200, 84,   0, 16 + 84, color = 0x3616, thick = 3)
+    
+    # 通过 wave 接口显示数据波形 (x,y,width,high,data,data_max)
+    # x - 起始显示 X 坐标
+    # y - 起始显示 Y 坐标
+    # width - 数据显示宽度 等同于数据个数
+    # high - 数据显示高度
+    # data - 数据对象 这里基本仅适配 TSL1401 的 get 接口返回的数据对象
+    # max - 数据最大值  TSL1401.RES_8BIT  的数据范围 [0, 255 ]
+    #                   TSL1401.RES_12BIT 的数据范围 [0, 4095]
+    lcd.wave(0, 120, 128, 64, arr, max = 4095)
+    lcd.wave(0, 200, 64, 32, arr, max = 4095)
     time.sleep_ms(1000)
     
     # 如果拨码开关打开 对应引脚拉低 就退出循环

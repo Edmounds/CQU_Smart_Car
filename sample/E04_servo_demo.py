@@ -23,13 +23,8 @@ import time
 
 # 核心板上 C4 是 LED
 # 学习板上 D9  对应二号拨码开关
-
-# 调用 machine 库的 Pin 类实例化一个引脚对象
-# 配置参数为 引脚名称 引脚方向 模式配置 默认电平
-# 详细内容参考 固件接口说明
-led     = Pin('C4' , Pin.OUT, pull = Pin.PULL_UP_47K, value = True)
-switch2 = Pin('D9' , Pin.IN , pull = Pin.PULL_UP_47K, value = True)
-
+led     = Pin('C4' , Pin.OUT, value = True)
+switch2 = Pin('D9' , Pin.IN , pull = Pin.PULL_UP_47K)
 state2  = switch2.value()
 
 # 使用 300Hz 的舵机控制频率
@@ -51,15 +46,20 @@ dir = 1
 # 不少接口仅支持整数数值输入 否则会报错
 duty = int(duty_angle(pwm_servo_hz, angle))
 
-# 学习板上舵机接口为 B26/C20/C24/C26
-
-# 调用 machine 库的 PWM 类实例化一个引脚对象
-# 配置参数为 引脚名称 频率 初始占空比
-# 详细内容参考 固件接口说明
+# 构造接口 是标准 MicroPython 的 machine.PWM 模块
+#   PWM(pin, freq, duty_u16[, kw_opts])
+#   pin         引脚名称    |   必要参数 对应核心板上有 PWM 功能的引脚
+#   freq        工作频率    |   必要参数
+#   duty_u16    初始脉宽    |   必要参数 关键字输入 范围 [1, 65535]
 pwm_servo1 = PWM("B26", pwm_servo_hz, duty_u16 = duty)
 pwm_servo2 = PWM("C20", pwm_servo_hz, duty_u16 = duty)
 pwm_servo3 = PWM("C24", pwm_servo_hz, duty_u16 = duty)
 pwm_servo4 = PWM("C26", pwm_servo_hz, duty_u16 = duty)
+# 学习板上舵机接口为 B26 / C20 / C24 / C26
+
+# 其余接口：
+# PWM.duty_u16([value])     # 传入 value 则更新占空比设置 否则仅反馈当前占空比设置
+# PWM.freq([value])         # 传入 value 则更新频率设置 否则仅反馈当前频率设置
 
 while True:
     # 延时 50 ms
@@ -77,7 +77,7 @@ while True:
             led.toggle()
     # 获取舵机角度对应占空比
     duty = int(duty_angle(pwm_servo_hz, angle))
-    # 设置更新 PWM 输出后可以看到舵机动作
+    
     pwm_servo1.duty_u16(duty)
     pwm_servo2.duty_u16(duty)
     pwm_servo3.duty_u16(duty)

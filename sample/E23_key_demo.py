@@ -7,11 +7,9 @@
 # 当 D9 引脚电平出现变化时退出测试程序
 
 # KEY_HANDLER 的扫描周期计算方式
-# KEY_HANDLER 通过 KEY_HANDLER(x) 初始化构建对象时 传入的 x 代表需要进行几次触发才会更新一次数据
 # Ticker 通过 start(y) 启动时 y 代表 Ticker 的周期
 # 此时每 y 毫秒会触发一次 KEY_HANDLER 的更新
-# 当触发次数大于等于 x 时 KEY_HANDLER 才会更新一次数据
-# 因此 KEY_HANDLER 的扫描周期时间等于 y * x 本例程中就是 10ms * 10 = 100ms
+# 因此 KEY_HANDLER 的采集周期时间等于 y 本例程中就是 10ms
 
 # 从 machine 库包含所有内容
 from machine import *
@@ -22,24 +20,41 @@ from smartcar import ticker
 # 从 seekfree 库包含 KEY_HANDLER
 from seekfree import KEY_HANDLER
 
-# 包含 gc 类
+# 包含 gc 与 time 类
 import gc
+import time
 
 # 核心板上 C4 是 LED
-# 学习板上 D9  对应二号拨码开关
-
-# 调用 machine 库的 Pin 类实例化一个引脚对象
-# 配置参数为 引脚名称 引脚方向 模式配置 默认电平
-# 详细内容参考 固件接口说明
-led     = Pin('C4' , Pin.OUT, pull = Pin.PULL_UP_47K, value = True)
-switch2 = Pin('D9' , Pin.IN , pull = Pin.PULL_UP_47K, value = True)
-
+# 学习板上 D9 对应二号拨码开关
+led     = Pin('C4' , Pin.OUT, value = True)
+switch2 = Pin('D9' , Pin.IN , pull = Pin.PULL_UP_47K)
 state2  = switch2.value()
 
-# 实例化 KEY_HANDLER 模块 参数是按键扫描周期
-# 扫描周期根据实际 ticker 周期或者延时周期来确定
-# 请务必确保扫描周期是正确的 否则按键触发可能会有问题
-key     = KEY_HANDLER(10)
+# 显示帮助信息
+KEY_HANDLER.help()
+time.sleep_ms(500)
+
+# 构造接口 用于构建一个 KEY_HANDLER 对象
+#   KEY_HANDLER(period)
+#   period  扫描周期    |   必要参数 按键的扫描周期 一般配合填写 Tickter 的运行周期
+key = KEY_HANDLER(10)
+
+# 其余接口：
+# KEY_HANDLER.capture()         # 执行一次按键状态扫描
+# KEY_HANDLER.get()             # 输出当前四个按键状态
+# KEY_HANDLER.clear([index])    # 清除按键状态 长按会锁定长按状态不被清除
+#   index       按键序号    |   可选参数 1 - 4 清除对应按键的触发状态
+# KEY_HANDLER.help()            # 可以直接通过类调用 也可以通过对象调用 输出模块的使用帮助信息
+# KEY_HANDLER.info()            # 通过对象调用 输出当前对象的自身信息
+
+key.info()
+time.sleep_ms(500)
+
+# 通过 get 接口读取数据
+# 本质上是将 Python 对象与传感器数据缓冲区链接起来
+# 所以只需要一次 KEY_HANDLER.get() 后就不需要再调用这个接口
+# 之后直接使用获取的列表对象即可 它的数据会随 caputer 更新
+key_data = key.get()
 
 ticker_flag     = False
 ticker_count    = 0
@@ -55,11 +70,11 @@ def time_pit_handler(time):
 # 实例化 PIT ticker 模块 参数为编号 [0-3] 最多四个
 pit1 = ticker(1)
 
-# 通过 capture 接口更新数据 但在这个例程中被 ticker 模块接管了
+# 通过 capture 接口更新数据 但在这个例程中被 ticker.capture_list 模块接管了
 # key.capture()
-# 关联采集接口 最少一个 最多八个
+# 关联采集接口 最少一个 最多八个 (imu, ccd, key...)
 # 可关联 smartcar 的 ADC_Group_x 与 encoder_x
-# 可关联 seekfree 的  IMU660RA, IMU963RA, KEY_HANDLER 和 TSL1401
+# 可关联 seekfree 的  KEY_HANDLER, IMU660RX, IMU963RX, DL1X 和 TSL1401
 pit1.capture_list(key)
 
 # 关联 Python 回调函数
@@ -69,8 +84,6 @@ pit1.start(10)
 
 while True:
     if (ticker_flag):
-        # 通过 get 接口读取数据
-        key_data = key.get()
         # 按键数据为三个状态 0-无动作 1-短按 2-长按
         if key_data[0]:
             print("key1 = {:>6d}.".format(key_data[0]))

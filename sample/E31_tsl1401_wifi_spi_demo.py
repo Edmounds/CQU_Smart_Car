@@ -3,11 +3,13 @@
 # 使用 RT1021-MicroPython 核心板搭配对应拓展学习板与无线串口模块测试
 # 当 D9 引脚电平出现变化时退出测试程序
 
-# 示例程序运行效果是通过无线串口模块接收逐飞助手下发的调参数据
+# 示例程序运行效果是通过 WIFI_SPI 模块接收逐飞助手下发的调参数据
 # 显示在 Thonny Shell 控制台并发送回逐飞助手的虚拟示波器显示
-# 如果看到 Thonny Shell 控制台输出 ValueError: Module init fault. 报错
-# 就证明 无线串口 模块连接异常 或者模块型号不对 或者模块损坏
-# 请检查模块型号是否正确 接线是否正常 线路是否导通 无法解决时请联系技术支持
+# 如果看到 Thonny Shell 控制台输出 Module init fault 报错
+# 就证明 WIFI_SPI 模块连接异常 或者 热点名称 密码 不正确 无法正常连接网络
+# 如果看到 Thonny Shell 控制台输出 Socket connect fault 报错
+# 就证明 目标连接的 IP 地址或者端口不正确 无法建立网络通信连接
+# 无法解决时请联系技术支持
 
 # CCD 的曝光计算方式
 # CCD 通过 TSL1401(x) 初始化构建对象时 传入的 x 代表需要进行几次触发才会更新一次数据
@@ -30,34 +32,33 @@ from seekfree import WIFI_SPI
 import gc
 import time
 
-# 学习板上 D9  对应二号拨码开关
-
-# 调用 machine 库的 Pin 类实例化一个引脚对象
-# 配置参数为 引脚名称 引脚方向 模式配置 默认电平
-# 详细内容参考 固件接口说明
-switch2 = Pin('D9' , Pin.IN , pull = Pin.PULL_UP_47K, value = True)
-
+# 学习板上 D9 对应二号拨码开关
+switch2 = Pin('D9' , Pin.IN , pull = Pin.PULL_UP_47K)
 state2  = switch2.value()
 
-# 调用 TSL1401 模块获取 CCD 实例
-# 参数是采集周期 调用多少次 capture/read 更新一次数据
-# 默认参数为 1 调整这个参数相当于调整曝光时间倍数
-# 这里填了 10 代表 10 次 capture/read 调用才会更新一次数据
+# 构造接口 用于构建一个 TSL1401 对象
+#   TSL1401([capture_div])
+#   capture_div 采集分频    |   非必要参数 默认为 1 也就是每次都采集 代表多少次触发进行一次采集
 ccd = TSL1401(10)
-# 调整 CCD 的采样精度为 12bit
+# 调整 CCD 的采样精度为 12bit 数值范围 [0, 4095]
 ccd.set_resolution(TSL1401.RES_12BIT)
 
-# 实例化 WIFI_SPI 模块
-# wifi_ssid     WiFi 名称 字符串
-# pass_word     WiFi 密码 字符串
-# connect_type  连接类型 WIFI_SPI.TCP_CONNECT / WIFI_SPI.UDP_CONNECT
-# ip_addr       目标连接地址 字符串
-# connect_port  目标连接端口 字符串
-wifi = WIFI_SPI("WIFI_NAME", "WIFI_PASSWORD", WIFI_SPI.TCP_CONNECT, "192.168.1.13", "8086")
+# WIFI_SPI 初始化需要连接热点并与目标建立连接 因此需要几分钟的时间 请耐心等待
+# WIFI_SPI 初始化需要连接热点并与目标建立连接 因此需要几分钟的时间 请耐心等待
+# WIFI_SPI 初始化需要连接热点并与目标建立连接 因此需要几分钟的时间 请耐心等待
 
-# 发送字符串的函数
-wifi.send_str("Hello World.\r\n")
-time.sleep_ms(500)
+# 禁止在 WIFI_SPI 初始化过程中连续点击 Thonny 的 Stop 按钮 因为会导致底层异常中断抛出错误停止运行
+# 禁止在 WIFI_SPI 初始化过程中连续点击 Thonny 的 Stop 按钮 因为会导致底层异常中断抛出错误停止运行
+# 禁止在 WIFI_SPI 初始化过程中连续点击 Thonny 的 Stop 按钮 因为会导致底层异常中断抛出错误停止运行
+
+# 构造接口 用于构建一个 WIFI_SPI 对象
+#   WIFI_SPI(wifi_ssid, pass_word, connect_type, ip_addr, connect_port) # 构造接口 学习板的WIFI_SPI模块接口
+#   wifi_ssid       热点名称    |   必要参数 WiFi 热点名称 字符串
+#   pass_word       热点密码    |   必要参数 WiFi 热点密码 字符串
+#   connect_type    连接类型    |   必要参数 连接类型 WIFI_SPI.TCP_CONNECT / WIFI_SPI.UDP_CONNECT
+#   ip_addr         连接地址    |   必要参数 目标连接地址 字符串
+#   connect_port    连接端口    |   必要参数 目标连接端口 字符串
+wifi = WIFI_SPI("WIFI_NAME", "WIFI_PASSWORD", WIFI_SPI.TCP_CONNECT, "192.168.1.13", "8086")
 
 ticker_flag = False
 ticker_count = 0

@@ -9,12 +9,15 @@
 # 就证明 无线串口 模块连接异常 或者模块型号不对 或者模块损坏
 # 请检查模块型号是否正确 接线是否正常 线路是否导通 无法解决时请联系技术支持
 
-# CCD 的曝光计算方式
-# CCD 通过 TSL1401(x) 初始化构建对象时 传入的 x 代表需要进行几次触发才会更新一次数据
-# Ticker 通过 start(y) 启动时 y 代表 Ticker 的周期
-# 此时每 y 毫秒会触发一次 CCD 的更新
-# 当触发次数大于等于 x 时 CCD 才会更新一次数据
-# 因此 CCD 的曝光时间等于 y * x 本例程中就是 10ms * 10 = 100ms
+# TSL1401 的曝光计算方式
+# TSL1401 通过 TSL1401(x) 初始化构建对象时 传入的 x 代表采集分频数
+# 也就是需要进行几次 caputer 触发才会更新一次数据
+# 当触发次数大于等于 x 时 TSL1401 才会更新一次数据
+# Ticker 通过 Ticker.start(y) 启动时 y 代表 Ticker 的周期
+# 当通过 Ticker.capture_list() 将 TSL1401 与 Ticker 关联后
+# 此时每 y 毫秒会进行一次 TSL1401 的 caputer 触发
+# 因此 TSL1401 的数据更新周期等于 y * x
+# 本例程中就是 10ms * 10 = 100ms
 
 # 从 machine 库包含所有内容
 from machine import *
@@ -30,30 +33,21 @@ from seekfree import WIRELESS_UART
 import gc
 import time
 
-# 学习板上 D9  对应二号拨码开关
-
-# 调用 machine 库的 Pin 类实例化一个引脚对象
-# 配置参数为 引脚名称 引脚方向 模式配置 默认电平
-# 详细内容参考 固件接口说明
-switch2 = Pin('D9' , Pin.IN , pull = Pin.PULL_UP_47K, value = True)
-
+# 学习板上 D9 对应二号拨码开关
+switch2 = Pin('D9' , Pin.IN , pull = Pin.PULL_UP_47K)
 state2  = switch2.value()
 
-# 调用 TSL1401 模块获取 CCD 实例
-# 参数是采集周期 调用多少次 capture/read 更新一次数据
-# 默认参数为 1 调整这个参数相当于调整曝光时间倍数
-# 这里填了 10 代表 10 次 capture/read 调用才会更新一次数据
+# 构造接口 用于构建一个 TSL1401 对象
+#   TSL1401([capture_div])
+#   capture_div 采集分频    |   非必要参数 默认为 1 也就是每次都采集 代表多少次触发进行一次采集
 ccd = TSL1401(10)
-# 调整 CCD 的采样精度为 12bit
+# 调整 CCD 的采样精度为 12bit 数值范围 [0, 4095]
 ccd.set_resolution(TSL1401.RES_12BIT)
 
-# 实例化 WIRELESS_UART 模块 参数是波特率
-# 无线串口模块需要自行先配对好设置好参数
+# 构造接口 用于构建一个 WIRELESS_UART 对象
+#   WIRELESS_UART([baudrate])
+#   baudrate    波特率 |   可选参数 默认 460800
 wireless = WIRELESS_UART(460800)
-
-# 发送字符串的函数
-wireless.send_str("Hello World.\r\n")
-time.sleep_ms(500)
 
 ticker_flag = False
 ticker_count = 0
@@ -71,9 +65,9 @@ pit1 = ticker(1)
 
 # 通过 capture 接口更新数据 但在这个例程中被 ticker 模块接管了
 # ccd.capture()
-# 关联采集接口 最少一个 最多八个
+# 关联采集接口 最少一个 最多八个 (imu, ccd, key...)
 # 可关联 smartcar 的 ADC_Group_x 与 encoder_x
-# 可关联 seekfree 的  IMU660RA, IMU963RA, KEY_HANDLER 和 TSL1401
+# 可关联 seekfree 的  KEY_HANDLER, IMU660RX, IMU963RX, DL1X 和 TSL1401
 pit1.capture_list(ccd)
 
 # 关联 Python 回调函数
@@ -90,7 +84,7 @@ while True:
         ccd_data4 = ccd.get(3)
         
         # send_ccd_image 将对应编号的 CCD 数据上传到逐飞助手
-        # 可选参数共有三个 WIRELESS_UART.
+        # 可选参数共有六个 WIRELESS_UART.
         #   [CCD1_BUFFER_INDEX  ,   CCD2_BUFFER_INDEX   ]
         #   [CCD3_BUFFER_INDEX  ,   CCD4_BUFFER_INDEX   ]
         #   [CCD1_2_BUFFER_INDEX,   CCD3_4_BUFFER_INDEX ]

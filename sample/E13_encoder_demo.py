@@ -22,27 +22,26 @@ from smartcar import encoder
 import gc
 
 # 核心板上 C4 是 LED
-# 学习板上 D9  对应二号拨码开关
-
-# 调用 machine 库的 Pin 类实例化一个引脚对象
-# 配置参数为 引脚名称 引脚方向 模式配置 默认电平
-# 详细内容参考 固件接口说明
-led     = Pin('C4' , Pin.OUT, pull = Pin.PULL_UP_47K, value = True)
-switch2 = Pin('D9' , Pin.IN , pull = Pin.PULL_UP_47K, value = True)
-
+# 学习板上 D9 对应二号拨码开关
+led     = Pin('C4' , Pin.OUT, value = True)
+switch2 = Pin('D9' , Pin.IN , pull = Pin.PULL_UP_47K)
 state2  = switch2.value()
 
-# 实例化 encoder 模块
-# 对应学习板的编码器接口 1/2/3/4
-# 总共三个参数 两个必要参数一个可选参数 [pinA,pinB,invert]
-# pinA - 编码器 A 相或 PLUS 引脚
-# pinB - 编码器 B 相或 DIR 引脚
-# invert - 可选参数 是否反向 可以通过这个参数调整编码器旋转方向数据极性
-# 详细内容参考 固件接口说明
+# 构造接口 用于构建一个 encoder 对象
+#   encoder(PhaseA, PhaseB, invert = False)
+#   PhaseA  引脚名称    |   必要参数 引脚名称字符串 编码器 A 相或 PLUS 引脚
+#   PhaseB  引脚名称    |   必要参数 引脚名称字符串 编码器 B 相或 DIR  引脚
+#   invert  模块索引    |   可选参数 是否反向 可以通过这个参数调整编码器旋转方向数据极性
 encoder_1 = encoder("D15", "D16", True)
 encoder_2 = encoder("D13", "D14")
 encoder_3 = encoder("C2" , "C3" , True)
 encoder_4 = encoder("C0" , "C1" )
+# 对应学习板的编码器接口 1/2/3/4
+
+# 其余接口：
+# encoder.capture() # 触发一次 encoder 的采集请求
+# encoder.get()     # 将 encoder转换结果更新到数据缓冲区
+# encoder.read()    # 触发一次转换 并将转换结果更新到数据缓冲区
 
 ticker_flag = False
 ticker_count = 0
@@ -64,7 +63,7 @@ pit1 = ticker(1)
 # encoder_4.capture()
 # 关联采集接口 最少一个 最多八个 (imu, ccd, key...)
 # 可关联 smartcar 的 ADC_Group_x 与 encoder_x
-# 可关联 seekfree 的  IMU660RA, IMU963RA, KEY_HANDLER 和 TSL1401
+# 可关联 seekfree 的  KEY_HANDLER, IMU660RX, IMU963RX, DL1X 和 TSL1401
 pit1.capture_list(encoder_1, encoder_2, encoder_3, encoder_4)
 
 # 关联 Python 回调函数
