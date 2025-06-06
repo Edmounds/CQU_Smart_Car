@@ -37,26 +37,45 @@ end_state = end_switch.value()
 # 定义片选引脚
 fenmingqi = Pin('D24', Pin.OUT, pull=Pin.PULL_UP_47K, value=0)
 
-cs = Pin('B29', Pin.OUT, pull=Pin.PULL_UP_47K, value=1)
-# 拉高拉低一次 CS 片选确保屏幕通信时序正常
+# 定义片选引脚 拉高拉低一次 CS 片选确保屏幕通信时序正常
+cs = Pin('B29' , Pin.OUT, value=True)
 cs.high()
 cs.low()
-key = KEY_HANDLER(10)
-# 定义控制引脚
-rst = Pin('B31', Pin.OUT, pull=Pin.PULL_UP_47K, value=1)
-dc = Pin('B5', Pin.OUT, pull=Pin.PULL_UP_47K, value=1)
-blk = Pin('C21', Pin.OUT, pull=Pin.PULL_UP_47K, value=1)
 
-# 新建 LCD 驱动实例
-drv = LCD_Drv(SPI_INDEX=1, BAUDRATE=60000000, DC_PIN=dc, RST_PIN=rst, LCD_TYPE=LCD_Drv.LCD200_TYPE)
-# 新建 LCD 实例
+# 定义控制引脚
+rst = Pin('B31', Pin.OUT, value=True)
+dc  = Pin('B5' , Pin.OUT, value=True)
+blk = Pin('C21', Pin.OUT, value=True)
+
+# 构造接口 用于构建一个 LCD_Drv 对象
+#   LCD_Drv(SPI_INDEX, BAUDRATE, DC_PIN, RST_PIN, LCD_TYPE)
+#   SPI_INDEX   接口索引    |   必要参数 关键字输入 选择屏幕所用的 SPI 接口索引
+#   BAUDRATE    通信速率    |   必要参数 关键字输入 SPI 的通信速率 最高 60MHz
+#   DC_PIN      命令引脚    |   必要参数 关键字输入 一个 Pin 实例
+#   RST_PIN     复位引脚    |   必要参数 关键字输入 一个 Pin 实例
+#   LCD_TYPE    屏幕类型    |   必要参数 关键字输入 目前仅支持 LCD_Drv.LCD200_TYPE
+drv = LCD_Drv(SPI_INDEX=2, BAUDRATE=60000000, DC_PIN=dc, RST_PIN=rst, LCD_TYPE=LCD_Drv.LCD200_TYPE)
+
+# 构造接口 用于构建一个 LCD 对象
+#   LCD(LCD_Drv)
+#   LCD_Drv     接口对象    |   必要参数 LCD_Drv 对象
 lcd = LCD(drv)
-# color 接口设置屏幕显示颜色 [前景色,背景色]
-lcd.color(0x0000, 0xFFFF)
-# mode 接口设置屏幕显示模式 [0:竖屏,1:横屏,2:竖屏180旋转,3:横屏180旋转]
+
+# 修改 LCD 的前景色与背景色
+#   LCD.color(pcolor, bgcolor)
+#   pcolor      前景色     |   必要参数 RGB565 格式
+#   bgcolor     背景色     |   必要参数 RGB565 格式
+lcd.color(0xFFFF, 0x0000)
+
+# 修改 LCD 的显示方向
+#   LCD.mode(dir)
+#   dir         显示方向    |   必要参数 [0:竖屏,1:横屏,2:竖屏180旋转,3:横屏180旋转]
 lcd.mode(0)
-# 清屏
-lcd.clear(0xFFFF)
+
+# 清屏 不传入参数就使用当前的 背景色 清屏
+#   LCD.clear([color])
+#   color       颜色数值    |   非必要参数 RGB565 格式 输入参数则更新背景色并清屏
+lcd.clear(0x0000)
 # 电机初始化
 motor_l = MOTOR_CONTROLLER(MOTOR_CONTROLLER.PWM_C28_PWM_C29, 13000, duty=0, invert=True)
 motor_r = MOTOR_CONTROLLER(MOTOR_CONTROLLER.PWM_D6_DIR_D7, 13000, duty=0, invert=True)
@@ -64,20 +83,25 @@ motor_dir = 1
 motor_duty = 0
 motor_duty_max = 1000
 
+#wifi模块初始化
+wifi = WIFI_SPI("Muelsyse", "88888888", WIFI_SPI.TCP_CONNECT, "192.168.8.143", "8086")
 
 turn = 0
 led = Pin('C4', Pin.OUT, pull=Pin.PULL_UP_47K, value=True)
 # 编码器初始化
-encoder_l = encoder("C2", "C3", True)
-encoder_r = encoder("C0", "C1")
+encoder_l = encoder("C2", "C3")
+encoder_r = encoder("C0", "C1", True)
 
 
 # 调用 TSL1401 模块获取 CCD 实例
 # 参数是采集周期 调用多少次 capture 更新一次数据
 # 默认参数为 1 调整这个参数相当于调整曝光时间倍数
 ccd = TSL1401(10)
+# 调整 CCD 的采样精度为 12bit 数值范围 [0, 4095]
+ccd.set_resolution(TSL1401.RES_12BIT)
+
 # 陀螺仪初始化
-imu = IMU963RA()
+imu = IMU963RX()
 imu_data = imu.get()
 
 ticker_flag = False
@@ -110,11 +134,21 @@ huang_l_zt2_min = 0
 huang_r_zt2_max = 0
 zebra = 0
 road2 = 0
+# 添加显示所需变量的初始化
+lline = 0
+rline = 0
+zhong = 0
+lline2 = 0
+rline2 = 0
+zhong2 = 0
+med_speed = 0
 
 
 ##############################################UART
-uart2 = UART(2)
-uart2.init(115200)
+# 将原先的UART通信改为使用WIFI_SPI
+# uart2 = UART(2)
+# uart2.init(115200)
+
 
 distance = 0
 id_number = 0  # 初始化变量m为整数
@@ -137,8 +171,8 @@ speed_1 = 0
 counts = 0
 motor1 = 0
 motor2 = 0
-med_roll_angle = 32
-med_speed1 = 40
+med_roll_angle = 114
+med_speed1 = 0
 
 # ////////////////转向//////////////////////
 a = 0.0032  # 0.026
@@ -434,15 +468,17 @@ def KalmanFilter2(input):
 
 
 def ips200_display():
-
     lcd.str16(0, 0, "Pitch={:f}.".format(round(Imu.Pitch, 3)), 0x001F)
     lcd.str16(0, 16, "Yaw={:f}.".format(Imu.Yaw), 0x001F)
     lcd.str16(0, 150, "med_speed{:>6d}, turn{:>6f}.".format(med_speed, turn), 0x001F)
-    lcd.str16(0, 285, f"motor1: {motor1:.2f},motor2:{motor2:.2f}", 0x001F)
-    lcd.str16(0, 223, "g = {:>6f}, {:>6f}, {:>6f}.".format(Imu.gyro_x, Imu.gyro_y, Imu.gyro_z), 0x001F)
-    lcd.str12(0, 243, "lline2{:>6d}, rline2{:>6d}, zhong2{:>6d}.".format(lline2, rline2, zhong2), 0x001F)
-    lcd.str12(0, 263, "lline{:>6d}, rline{:>6d}, zhong{:>6d}.".format(lline, rline, zhong), 0x001F)
     lcd.str16(0, 209, "enc ={:>6f}, {:>6f}\r\n".format(Encoders.KAL_templ_pluse, Encoders.KAL_tempr_pluse), 0x001F)
+    lcd.str16(0, 223, "g = {:>6f}, {:>6f}, {:>6f}.".format(Imu.gyro_x, Imu.gyro_y, Imu.gyro_z), 0x001F)
+    lcd.str16(0, 285, f"motor1: {motor1:.2f},motor2:{motor2:.2f}", 0x001F)
+    
+    # 发送数据到逐飞助手虚拟示波器显示
+    wifi.send_oscilloscope(
+        motor1, motor2, Imu.Pitch, Imu.Yaw, 
+        Encoders.KAL_templ_pluse, Encoders.KAL_tempr_pluse, turn, med_speed)
 
 # 转向
 def control_turn(zhong2):
@@ -488,8 +524,6 @@ def time_pit_handler(time):
 
     if ticker_count % 1 == 0:  # 角速度 1ms 执行一次
         Imu963()  # 陀螺仪解算
-        #print("{:>6f}, {:>6f}, {:>6f}\n".format(Imu.Pitch, Imu.Roll, Imu.Yaw))  # 测试用，配置参数后通过vofa 串口打印
-        # print("{:>6f}, {:>6f}, {:>6f}\n".format(Imu.gyro_x, Imu.gyro_y, Imu.gyro_z))  # 测试用，配置参数后通过vofa 串口打印
         motor1 = angle_speed1(angle_1, Imu.gyro_x)
         motor2 = angle_speed1(angle_1, Imu.gyro_x)
 
@@ -540,13 +574,43 @@ pit3.start(10)
 while True:
 
     if ticker_flag:
-        ccd_data1 = ccd.get(0)
-        ccd_data2 = ccd.get(1)
-        # ccd 处理代码在这调用
-
+        # 获取CCD数据
+        ccd_data1 = ccd.get(0)  # 获取第一个CCD的数据
+        ccd_data2 = ccd.get(1)  # 获取第二个CCD的数据
+        
+        # 发送CCD图像到逐飞助手显示
+        wifi.send_ccd_image(WIFI_SPI.CCD1_2_BUFFER_INDEX)
+        
+        # 数据解析
+        data_flag = wifi.data_analysis()
+        for i in range(0,8):
+            # 判断哪个通道有数据更新
+            if (data_flag[i]):
+                # 数据更新到缓冲
+                data_wave = wifi.get_data(i)
+                # 根据接收到的数据更新参数
+                if i == 0:
+                    angle_kp = data_wave
+                elif i == 1:
+                    angle_ki = data_wave
+                elif i == 2:
+                    angle_kd = data_wave
+                elif i == 3:
+                    roll_angle_Kp = data_wave
+                elif i == 4:
+                    roll_angle_Ki = data_wave
+                elif i == 5:
+                    roll_angle_Kd = data_wave
+                elif i == 6:
+                    med_roll_angle = data_wave
+                elif i == 7:
+                    med_speed = data_wave
+        
         ticker_flag = False
-    #ips200_display()
-
+    
+    # 显示屏更新
+    ips200_display()
+    
     # 如果拨码开关打开 对应引脚拉低 就退出循环
     # 这么做是为了防止写错代码导致异常 有一个退出的手段
     if end_switch.value() != end_state:
@@ -557,4 +621,5 @@ while True:
         break
 
     gc.collect()
+
 
